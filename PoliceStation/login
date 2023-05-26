@@ -1,0 +1,60 @@
+const express = require('express');
+const bodyParser = require('body-parser');
+const jwt = require('jsonwebtoken');
+
+const app = express();
+const port = 3000;
+const secretKey = 'your_secret_key';
+
+// Mock user database
+const police = [
+  { id: 1, police: 'john23', password: '123456' },
+  { id: 2, username: 'john', password: '121212' }
+];
+
+// Middleware to parse JSON request bodies
+app.use(bodyParser.json());
+
+// API endpoint for login
+app.post('/api/login', (req, res) => {
+  const { police_id, password } = req.body;
+
+  // Find policeid in the mock database
+  const policeid = police.find(u => u.police_id === police_id && u.password === password);
+
+  if (police_id) {
+    // Generate JWT token
+    const token = jwt.sign({ policeid: policeid.id }, secretKey, { expiresIn: '1h' });
+    res.json({ success: true, message: 'Authentication successful', token });
+  } else {
+    res.status(401).json({ success: false, message: 'Authentication failed' });
+  }
+});
+
+// Protected API endpoint
+app.get('/api/protected', authenticateToken, (req, res) => {
+  res.json({ success: true, message: 'Protected data accessed successfully' });
+});
+
+// Middleware to authenticate JWT token
+function authenticateToken(req, res, next) {
+  const token = req.headers.authorization;
+
+  if (token) {
+    jwt.verify(token, secretKey, (err, decoded) => {
+      if (err) {
+        return res.status(403).json({ success: false, message: 'Invalid token' });
+      }
+
+      req.police_id = decoded.police_id;
+      next();
+    });
+  } else {
+    res.status(401).json({ success: false, message: 'Token not provided' });
+  }
+}
+
+// Start the server
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
